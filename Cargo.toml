@@ -4,4 +4,6 @@ version = "0.1.0"
 authors = ["XX <freecoder.xx@gmail.com>"]
 
 [dependencies]
+tt-derive = { path = "../tt-derive" }
 chrono = "0.4"
+failure = "0.1"
