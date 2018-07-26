@@ -4,6 +4,8 @@ extern crate failure;
 #[macro_use]
 extern crate tt_derive;
 
+#[macro_use]
+pub mod lang;
 pub mod journal;
 pub mod error;
 pub mod record;

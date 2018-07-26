@@ -1,6 +1,6 @@
 use chrono::{DateTime, Local, Duration};
 
-#[derive(Debug, FieldsEnum)]
+#[derive(Debug, FieldsEnum, Default)]
 pub struct Record {
     pub start: Option<DateTime<Local>>,
     pub duration: Option<Duration>,
