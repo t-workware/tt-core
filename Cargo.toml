@@ -4,6 +4,8 @@ version = "0.1.0"
 authors = ["XX <freecoder.xx@gmail.com>"]
 
 [dependencies]
-tt-derive = { path = "../tt-derive" }
 chrono = "0.4"
 failure = "0.1"
+regex = "1.0"
+lazy_static = "1.0"
+field_enums = { git = "https://github.com/XX/field_enums.git" }
