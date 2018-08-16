@@ -1,8 +1,8 @@
 use std::fs::OpenOptions;
 use std::ffi::OsString;
-use std::io::Write;
+use std::io::{Write, BufReader, BufRead};
 
-use record::{Record, RecordQuery};
+use record::{Record, RecordFieldType};
 use journal::{Journal, JournalResult};
 
 pub struct FileJournal {
@@ -24,11 +24,11 @@ impl Journal for FileJournal {
         Ok(())
     }
 
-    fn get(&self, query: &[RecordQuery]) -> JournalResult<Option<Record>> {
+    fn get(&self, query: &[RecordFieldType], offset: Option<i32>) -> JournalResult<Option<Record>> {
         unimplemented!()
     }
 
-    fn update(&mut self, query: &[RecordQuery], record: &Record) -> JournalResult {
+    fn update(&mut self, query: &[RecordFieldType], offset: Option<i32>, record: &Record) -> JournalResult {
         unimplemented!()
     }
 }

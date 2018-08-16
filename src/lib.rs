@@ -8,7 +8,7 @@ extern crate regex;
 extern crate lazy_static;
 
 #[macro_use]
-pub mod lang;
+pub mod util;
 pub mod journal;
 pub mod error;
 pub mod record;

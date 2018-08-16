@@ -1,7 +1,7 @@
 use std::string::ToString;
 use std::str::FromStr;
 use regex::Regex;
-use chrono::{DateTime, Local, Duration, TimeZone, Timelike};
+use chrono::{DateTime, Local, Duration, TimeZone};
 use error::TimeTrackError;
 
 lazy_static! {
@@ -70,6 +70,7 @@ pub enum RecordQuery {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::Timelike;
 
     #[test]
     fn record_regex() {
