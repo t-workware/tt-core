@@ -5,9 +5,12 @@ extern crate chrono;
 mod common;
 
 use std::path::PathBuf;
-use chrono::{Local, Duration};
+use chrono::{Local, Duration, TimeZone};
 use tt_core::{
-    record::Record,
+    record::{
+        Record,
+        RecordFieldType,
+    },
     journal::{
         Journal,
         file::FileJournal,
@@ -16,7 +19,7 @@ use tt_core::{
 
 #[test]
 fn add_record() {
-    let journal_dir = &["..", "target", "test_file_journal"].iter().collect::<PathBuf>();
+    let journal_dir = &["..", "target", "test_file_journal", "add"].iter().collect::<PathBuf>();
     let journal_file = &journal_dir.join("journal.txt");
     clear_dir!(journal_dir);
     let mut journal = FileJournal::new(journal_file);
@@ -51,4 +54,85 @@ fn add_record() {
     let expected = format!("[{}, 42 (1)] Some note\n[{}, 42 (-1)] Some note\n",
                            formatted_now, formatted_now);
     assert_content!(journal_file, expected);
+}
+
+#[test]
+fn get_record() {
+    let journal_dir = &["..", "target", "test_file_journal", "get"].iter().collect::<PathBuf>();
+    let journal_file = &journal_dir.join("journal.txt");
+    clear_dir!(journal_dir);
+    let journal = FileJournal::new(journal_file);
+
+    create_file!(journal_file, r"[2018-08-16 13:52:43, 42 (1)] Note 1
+[2018-08-16 15:40:25, 42 (-5)] Note 2
+[2018-08-16 18:12:01, 85 ()] Note 3
+[2018-08-16 18:12:01, 85 ()]
+");
+    let expected_records = [
+        Some(Record {
+            start: Local.datetime_from_str("2018-08-16 13:52:43", Record::START_DATETIME_FORMAT).ok(),
+            duration: Some(Duration::minutes(42)),
+            correction: Some(Duration::minutes(1)),
+            note: "Note 1".to_string(),
+        }),
+        Some(Record {
+            start: Local.datetime_from_str("2018-08-16 15:40:25", Record::START_DATETIME_FORMAT).ok(),
+            duration: Some(Duration::minutes(42)),
+            correction: Some(Duration::minutes(-5)),
+            note: "Note 2".to_string(),
+        }),
+        Some(Record {
+            start: Local.datetime_from_str("2018-08-16 18:12:01", Record::START_DATETIME_FORMAT).ok(),
+            duration: Some(Duration::minutes(85)),
+            correction: None,
+            note: "Note 3".to_string(),
+        }),
+        Some(Record {
+            start: Local.datetime_from_str("2018-08-16 18:12:01", Record::START_DATETIME_FORMAT).ok(),
+            duration: Some(Duration::minutes(85)),
+            correction: None,
+            note: "".to_string(),
+        })
+    ];
+
+    for i in 0..4 {
+        let index = i as usize;
+        let record = journal.get(&[], Some(i))
+            .expect("Can't get record from journal");
+        assert_eq!(expected_records[index], record);
+
+        let record = journal.get(&[RecordFieldType::Correction(Some(Duration::minutes(-5)))], Some(i - 1))
+            .expect("Can't get record from journal");
+        assert_eq!(expected_records[index], record);
+
+        let record = journal.get(&[RecordFieldType::Correction(None)], Some(i - 2))
+            .expect("Can't get record from journal");
+        assert_eq!(expected_records[index], record);
+
+        let record = journal.get(&[RecordFieldType::Note("".to_string())], Some(i - 3))
+            .expect("Can't get record from journal");
+        assert_eq!(expected_records[index], record);
+
+        let record = journal.get(&[], Some(i - 4))
+            .expect("Can't get record from journal");
+        assert_eq!(expected_records[index], record);
+    }
+
+    let record = journal.get(&[], None)
+        .expect("Can't get record from journal");
+    assert_eq!(expected_records[0], record);
+
+    let record = journal.get(&[RecordFieldType::Duration(Some(Duration::minutes(42)))], Some(0))
+        .expect("Can't get record from journal");
+    assert_eq!(expected_records[0], record);
+
+    let record = journal.get(&[RecordFieldType::Duration(Some(Duration::minutes(85)))], None)
+        .expect("Can't get record from journal");
+    assert_eq!(expected_records[2], record);
+
+    let record = journal.get(&[
+        RecordFieldType::Duration(Some(Duration::minutes(85))),
+        RecordFieldType::Note("".to_string())
+    ], None).expect("Can't get record from journal");
+    assert_eq!(expected_records[3], record);
 }

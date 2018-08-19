@@ -7,7 +7,7 @@ use error::TimeTrackError;
 lazy_static! {
     pub static ref RECORD_REGEX: Regex = {
         let regex_string = format!(
-            r"^\[\s*(?P<{}>[^,]*),\s*(?P<{}>[0-9]*)\s*\(\s*(?P<{}>\-?[0-9]*)\s*\)\s*\]\s*(?P<{}>[^\n]*)\n*$",
+            r"^\[\s*(?P<{}>[^,]*),\s*(?P<{}>[0-9]*)\s*\(\s*(?P<{}>\-?[0-9]*)\s*\)\s*\]\s*(?P<{}>[^\n|^\r\n]*)\r?\n*$",
             RecordFieldName::Start.name(),
             RecordFieldName::Duration.name(),
             RecordFieldName::Correction.name(),
