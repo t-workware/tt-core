@@ -1,4 +1,4 @@
-use std::fs::OpenOptions;
+use std::fs;
 use std::ffi::OsString;
 use std::io::BufWriter;
 use std::str::FromStr;
@@ -95,9 +95,21 @@ impl Iter {
     }
 
     pub fn flush(&mut self) -> JournalResult {
-        let file = OpenOptions::new().write(true).open(&self.path)?;
-        self.rope.write_to(BufWriter::new(file))?;
-        Ok(())
+        let mut backup = self.path.clone();
+        backup.push(".tt_back");
+
+        fs::copy(&self.path, &backup)?;
+
+        let file = fs::OpenOptions::new().truncate(true).write(true).open(&self.path)?;
+        let result = if let Err(err) = self.rope.write_to(BufWriter::new(file)) {
+            fs::copy(&backup, &self.path)?;
+            Err(err.into())
+        } else {
+            Ok(())
+        };
+
+        fs::remove_file(&backup)?;
+        result
     }
 }
 

@@ -31,13 +31,17 @@ impl Record {
 
 impl ToString for Record {
     fn to_string(&self) -> String {
-        format!(
-            "[{}, {} ({})] {}\n",
+        let line = format!(
+            "[{}, {} ({})]",
             to_string_opt_as_str!(self.start.map(|dt| dt.format(Record::START_DATETIME_FORMAT))),
             to_string_opt_as_str!(self.duration.map(|d| d.num_minutes())),
-            to_string_opt_as_str!(self.correction.map(|d| d.num_minutes())),
-            self.note
-        )
+            to_string_opt_as_str!(self.correction.map(|d| d.num_minutes()))
+        );
+        if !self.note.is_empty() {
+            format!("{} {}\n", line, self.note)
+        } else {
+            line + "\n"
+        }
     }
 }
 

@@ -36,41 +36,53 @@ impl Journal for FileJournal {
     }
 
     fn get(&self, query: &[RecordFieldType], offset: Option<i32>) -> JournalResult<Option<Record>> {
-        let offset = offset.unwrap_or(0);
         let mut iter = self.try_iter()?;
-        let mut first_line = true;
-        'next_record: while let Some(record) = iter.next() {
-            for field in query {
-                if !match field {
-                    RecordFieldType::Start(x) => *x == record.start,
-                    RecordFieldType::Duration(x) => *x == record.duration,
-                    RecordFieldType::Correction(x) => *x == record.correction,
-                    RecordFieldType::Note(x) => *x == record.note,
-                } {
-                    first_line = false;
-                    continue 'next_record;
-                }
-            }
-
-            return Ok(
-                if offset == 0 {
-                    Some(record)
-                } else if offset > 0 {
-                    iter.forward(offset as usize).get()
-                } else {
-                    if first_line {
-                        iter.go_to_end();
-                    }
-                    iter.backward(-offset as usize).get()
-                }
-            );
-        }
-        Ok(None)
+        Ok(iter_to_record(&mut iter, query, offset)?)
     }
 
-    fn update<F>(&mut self, query: &[RecordFieldType], offset: Option<i32>, f: F) -> JournalResult
+    fn update<F>(&mut self, query: &[RecordFieldType], offset: Option<i32>, f: F) -> JournalResult<bool>
         where F: FnOnce(Record) -> Option<Record>,
     {
-        unimplemented!()
+        let mut iter = self.try_iter()?;
+        let updated = iter_to_record(&mut iter, query, offset)?
+            .and_then(f)
+            .map(|new_record| iter.update(&new_record).is_some())
+            .unwrap_or(false);
+        if updated {
+            iter.flush()?;
+        }
+        Ok(updated)
     }
+}
+
+fn iter_to_record(iter: &mut Iter, query: &[RecordFieldType], offset: Option<i32>) -> JournalResult<Option<Record>> {
+    let offset = offset.unwrap_or(0);
+    let mut first_line = true;
+    'next_record: while let Some(record) = iter.next() {
+        for field in query {
+            if !match field {
+                RecordFieldType::Start(x) => *x == record.start,
+                RecordFieldType::Duration(x) => *x == record.duration,
+                RecordFieldType::Correction(x) => *x == record.correction,
+                RecordFieldType::Note(x) => *x == record.note,
+            } {
+                first_line = false;
+                continue 'next_record;
+            }
+        }
+
+        return Ok(
+            if offset == 0 {
+                Some(record)
+            } else if offset > 0 {
+                iter.forward(offset as usize).get()
+            } else {
+                if first_line {
+                    iter.go_to_end();
+                }
+                iter.backward(-offset as usize).get()
+            }
+        );
+    }
+    Ok(None)
 }

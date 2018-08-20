@@ -26,17 +26,17 @@ fn add_record() {
     let mut record = Record::default();
 
     journal.add(&record).expect("Can't add record to journal");
-    assert_content!(journal_file, "[,  ()] \n");
+    assert_content!(journal_file, "[,  ()]\n");
 
     record.note = "Some note".to_string();
     journal.add(&record).expect("Can't add record to journal");
-    assert_content!(journal_file, "[,  ()] \n[,  ()] Some note\n");
+    assert_content!(journal_file, "[,  ()]\n[,  ()] Some note\n");
 
     let now = Local::now();
     let formatted_now = now.format(Record::START_DATETIME_FORMAT).to_string();
     record.start = Some(now.clone());
     journal.add(&record).expect("Can't add record to journal");
-    let expected = format!("[,  ()] \n[,  ()] Some note\n[{},  ()] Some note\n", formatted_now);
+    let expected = format!("[,  ()]\n[,  ()] Some note\n[{},  ()] Some note\n", formatted_now);
     assert_content!(journal_file, expected);
 
     delete_file!(journal_file);
@@ -135,4 +135,43 @@ fn get_record() {
         RecordFieldType::Note("".to_string())
     ], None).expect("Can't get record from journal");
     assert_eq!(expected_records[3], record);
+}
+
+#[test]
+fn update_record() {
+    let journal_dir = &["..", "target", "test_file_journal", "update"].iter().collect::<PathBuf>();
+    let journal_file = &journal_dir.join("journal.txt");
+    clear_dir!(journal_dir);
+    let mut journal = FileJournal::new(journal_file);
+
+    create_file!(journal_file, r"[2018-08-16 13:52:43, 42 (1)] Note 1
+[2018-08-16 15:40:25, 42 (-5)] Note 2
+[2018-08-16 18:12:01, 85 ()] Note 3
+[2018-08-16 18:12:01, 85 ()]
+");
+
+    assert!(journal.update(&[], Some(-1), |mut record| {
+        record.start = Local.datetime_from_str("2018-08-20 22:30:15", Record::START_DATETIME_FORMAT).ok();
+        record.note = "Note 4".to_string();
+        Some(record)
+    }).unwrap());
+    assert!(journal.update(&[RecordFieldType::Correction(Some(Duration::minutes(1)))], None, |mut record| {
+        record.start = Local.datetime_from_str("2018-08-20 22:40:12", Record::START_DATETIME_FORMAT).ok();
+        record.duration = Some(Duration::minutes(12));
+        Some(record)
+    }).unwrap());
+    assert!(journal.update(&[RecordFieldType::Correction(None)], None, |mut record| {
+        record.correction = Some(Duration::minutes(-17));
+        Some(record)
+    }).unwrap());
+    assert!(journal.update(&[RecordFieldType::Correction(Some(Duration::minutes(-17)))], Some(-1), |mut record| {
+        record.correction = None;
+        record.note = "".to_string();
+        Some(record)
+    }).unwrap());
+    assert_content!(journal_file, r"[2018-08-20 22:40:12, 12 (1)] Note 1
+[2018-08-16 15:40:25, 42 ()]
+[2018-08-16 18:12:01, 85 (-17)] Note 3
+[2018-08-20 22:30:15, 85 ()] Note 4
+");
 }
