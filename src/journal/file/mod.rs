@@ -31,7 +31,7 @@ impl FileJournal {
 impl Journal for FileJournal {
     fn add(&mut self, record: &Record) -> JournalResult {
         let mut file = OpenOptions::new().create(true).append(true).open(&self.path)?;
-        file.write(record.to_string().as_bytes())?;
+        file.write((record.to_string() + "\n").as_bytes())?;
         Ok(())
     }
 

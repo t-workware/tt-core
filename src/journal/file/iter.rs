@@ -90,7 +90,7 @@ impl Iter {
             let end_idx = self.rope.line_to_char(cur_line_idx + 1);
             self.rope.remove(start_idx..end_idx);
         }
-        self.rope.insert(start_idx, &item.to_string());
+        self.rope.insert(start_idx, &(item.to_string() + "\n"));
         Some(start_idx)
     }
 

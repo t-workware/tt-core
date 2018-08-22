@@ -46,9 +46,9 @@ impl ToString for Record {
             to_string_opt_as_str!(self.correction.map(|d| d.num_minutes()))
         );
         if !self.note.is_empty() {
-            format!("{} {}\n", line, self.note)
+            format!("{} {}", line, self.note)
         } else {
-            line + "\n"
+            line
         }
     }
 }
