@@ -1,7 +1,7 @@
 use std::string::ToString;
 use std::str::FromStr;
 use regex::Regex;
-use chrono::{DateTime, Local, Duration, TimeZone, Timelike};
+pub use chrono::{DateTime, Local, Duration, TimeZone, Timelike};
 use error::TimeTrackError;
 
 lazy_static! {
@@ -33,6 +33,13 @@ impl Record {
         Record {
             start: Some(now - Duration::nanoseconds(now.nanosecond() as i64)),
             ..Default::default()
+        }
+    }
+
+    pub fn set_duration_to_now(&mut self) {
+        if self.start.is_some() {
+            let now = Local::now();
+            self.duration = Some(Duration::minutes((now - *self.start.as_ref().unwrap()).num_minutes()));
         }
     }
 }
@@ -143,5 +150,15 @@ mod tests {
 
         let line = record.to_string();
         assert_eq!(record, line.parse::<Record>().unwrap());
+    }
+
+    #[test]
+    fn set_duration_to_now() {
+        let mut record = Record {
+            start: Some(Local::now() - Duration::minutes(12)),
+            ..Default::default()
+        };
+        record.set_duration_to_now();
+        assert_eq!(record.duration.unwrap(), Duration::minutes(12));
     }
 }
