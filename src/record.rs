@@ -1,7 +1,7 @@
 use std::string::ToString;
 use std::str::FromStr;
 use regex::Regex;
-use chrono::{DateTime, Local, Duration, TimeZone};
+use chrono::{DateTime, Local, Duration, TimeZone, Timelike};
 use error::TimeTrackError;
 
 lazy_static! {
@@ -27,6 +27,14 @@ pub struct Record {
 
 impl Record {
     pub const START_DATETIME_FORMAT: &'static str = "%Y-%m-%d %H:%M:%S";
+
+    pub fn now() -> Self {
+        let now = Local::now();
+        Record {
+            start: Some(now - Duration::nanoseconds(now.nanosecond() as i64)),
+            ..Default::default()
+        }
+    }
 }
 
 impl ToString for Record {
@@ -74,7 +82,6 @@ pub enum RecordQuery {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::Timelike;
 
     #[test]
     fn record_regex() {
