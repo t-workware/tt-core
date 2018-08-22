@@ -1,8 +1,7 @@
-extern crate tt_core;
 extern crate chrono;
-
+extern crate tt_core;
 #[macro_use]
-mod common;
+extern crate file_assertions;
 
 use std::path::PathBuf;
 use chrono::{Local, Duration, TimeZone};

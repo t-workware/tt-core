@@ -1,5 +1,5 @@
 use std::fs::OpenOptions;
-use std::ffi::OsString;
+use std::ffi::{OsString, OsStr};
 use std::io::{Write, BufReader};
 
 use ropey::Rope;
@@ -19,6 +19,10 @@ impl FileJournal {
         FileJournal {
             path: path.into(),
         }
+    }
+
+    pub fn path(&self) -> &OsStr {
+        self.path.as_os_str()
     }
 
     pub fn try_iter(&self) -> JournalResult<Iter> {
