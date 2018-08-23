@@ -42,6 +42,14 @@ impl Record {
             self.duration = Some(Duration::minutes((now - *self.start.as_ref().unwrap()).num_minutes()));
         }
     }
+
+    pub fn set_correction_to_now(&mut self) {
+        if self.start.is_some() {
+            let now = Local::now();
+            let total_duration = Duration::minutes((now - *self.start.as_ref().unwrap()).num_minutes());
+            self.correction = Some(total_duration - self.duration.unwrap_or(Duration::minutes(0)));
+        }
+    }
 }
 
 impl ToString for Record {
@@ -160,5 +168,16 @@ mod tests {
         };
         record.set_duration_to_now();
         assert_eq!(record.duration.unwrap(), Duration::minutes(12));
+    }
+
+    #[test]
+    fn set_correction_to_now() {
+        let mut record = Record {
+            start: Some(Local::now() - Duration::minutes(42)),
+            duration: Some(Duration::minutes(12)),
+            ..Default::default()
+        };
+        record.set_correction_to_now();
+        assert_eq!(record.correction.unwrap(), Duration::minutes(30));
     }
 }
