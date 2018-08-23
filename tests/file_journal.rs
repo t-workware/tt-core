@@ -32,7 +32,7 @@ fn add_record() {
     assert_content!(journal_file, "[,  ()]\n[,  ()] Some note\n");
 
     let now = Local::now();
-    let formatted_now = now.format(Record::START_DATETIME_FORMAT).to_string();
+    let formatted_now = now.format(Record::START_DATETIME_FORMAT);
     record.start = Some(now.clone());
     journal.add(&record).expect("Can't add record to journal");
     let expected = format!("[,  ()]\n[,  ()] Some note\n[{},  ()] Some note\n", formatted_now);
