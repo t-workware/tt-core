@@ -44,8 +44,10 @@ impl Iter {
                 return self.rope
                     .line(cur_line_idx)
                     .as_str()
-                    .map(Record::from_str)
-                    .and_then(|res| res.ok());
+                    .map(|s| Record::from_str(s)
+                        .map(|r| Item::Record(r))
+                        .unwrap_or(Item::SomeLine(s.trim_right_matches('\n').to_string()))
+                    );
             }
         }
         None
@@ -113,8 +115,39 @@ impl Iter {
     }
 }
 
+#[derive(Debug, PartialEq, PartialOrd)]
+pub enum Item {
+    Record(Record),
+    SomeLine(String),
+}
+
+impl Item {
+    pub fn record(&self) -> Option<&Record> {
+        match self {
+            Item::Record(r) => Some(r),
+            _ => None,
+        }
+    }
+
+    pub fn into_record(self) -> Option<Record> {
+        match self {
+            Item::Record(r) => Some(r),
+            _ => None,
+        }
+    }
+}
+
+impl ToString for Item {
+    fn to_string(&self) -> String {
+        match self {
+            Item::Record(r) => r.to_string(),
+            Item::SomeLine(s) => s.clone(),
+        }
+    }
+}
+
 impl Iterator for Iter {
-    type Item = Record;
+    type Item = Item;
 
     fn next(&mut self) -> Option<<Self as Iterator>::Item> {
         self.forward(1).get()
@@ -126,11 +159,17 @@ mod tests {
     use super::*;
     use std::io::{BufReader, Cursor};
 
-    fn record_with_note(note: &str) -> Record {
-        Record {
-            note: note.to_string(),
-            ..Default::default()
-        }
+    fn item_record_with_note(note: &str) -> Item {
+        Item::Record(
+            Record {
+                note: note.to_string(),
+                ..Default::default()
+            }
+        )
+    }
+
+    fn item_line(line: &str) -> Item {
+        Item::SomeLine(line.to_string())
     }
 
     #[test]
@@ -138,17 +177,28 @@ mod tests {
         let mut iter = Iter::default().with_rope(
             Rope::from_reader(BufReader::new(Cursor::new(b"[,()] foo\n[,()] bar\n[,()] bazz"))).unwrap()
         );
-        assert_eq!(record_with_note("foo"), iter.next().unwrap());
-        assert_eq!(record_with_note("bar"), iter.next().unwrap());
-        assert_eq!(record_with_note("bazz"), iter.next().unwrap());
+        assert_eq!(item_record_with_note("foo"), iter.next().unwrap());
+        assert_eq!(item_record_with_note("bar"), iter.next().unwrap());
+        assert_eq!(item_record_with_note("bazz"), iter.next().unwrap());
         assert!(iter.next().is_none());
 
         let mut iter = Iter::default().with_rope(
             Rope::from_reader(BufReader::new(Cursor::new(b"[,()] foo\n[,()] bar\r\n[,()] bazz\n"))).unwrap(),
         );
-        assert_eq!(record_with_note("foo"), iter.next().unwrap());
-        assert_eq!(record_with_note("bar"), iter.next().unwrap());
-        assert_eq!(record_with_note("bazz"), iter.next().unwrap());
+        assert_eq!(item_record_with_note("foo"), iter.next().unwrap());
+        assert_eq!(item_record_with_note("bar"), iter.next().unwrap());
+        assert_eq!(item_record_with_note("bazz"), iter.next().unwrap());
+        assert!(iter.next().is_none());
+
+        let mut iter = Iter::default().with_rope(
+            Rope::from_reader(BufReader::new(Cursor::new(&b"test 1\n[,()] foo\n[,()] bar\r\ntest 2\n[,()] bazz\ntest 3\n"[..]))).unwrap(),
+        );
+        assert_eq!(item_line("test 1"), iter.next().unwrap());
+        assert_eq!(item_record_with_note("foo"), iter.next().unwrap());
+        assert_eq!(item_record_with_note("bar"), iter.next().unwrap());
+        assert_eq!(item_line("test 2"), iter.next().unwrap());
+        assert_eq!(item_record_with_note("bazz"), iter.next().unwrap());
+        assert_eq!(item_line("test 3"), iter.next().unwrap());
         assert!(iter.next().is_none());
 
         let mut iter = Iter::default().with_rope(
@@ -159,29 +209,29 @@ mod tests {
         let mut iter = Iter::default().with_rope(
             Rope::from_reader(BufReader::new(Cursor::new(b"\n"))).unwrap(),
         );
-        assert!(iter.next().is_none());
+        assert!(iter.next().unwrap().into_record().is_none());
 
         let mut iter = Iter::default().with_rope(
             Rope::from_reader(BufReader::new(Cursor::new(b"\r\n"))).unwrap(),
         );
-        assert!(iter.next().is_none());
+        assert!(iter.next().unwrap().into_record().is_none());
 
         let mut iter = Iter::default().with_rope(
             Rope::from_reader(BufReader::new(Cursor::new(b"[,()] foo"))).unwrap(),
         );
-        assert_eq!(record_with_note("foo"), iter.next().unwrap());
+        assert_eq!(item_record_with_note("foo"), iter.next().unwrap());
         assert!(iter.next().is_none());
 
         let mut iter = Iter::default().with_rope(
             Rope::from_reader(BufReader::new(Cursor::new(b"[,()] foo\n"))).unwrap(),
         );
-        assert_eq!(record_with_note("foo"), iter.next().unwrap());
+        assert_eq!(item_record_with_note("foo"), iter.next().unwrap());
         assert!(iter.next().is_none());
 
         let mut iter = Iter::default().with_rope(
             Rope::from_reader(BufReader::new(Cursor::new(b"[,()] foo\r\n"))).unwrap(),
         );
-        assert_eq!(record_with_note("foo"), iter.next().unwrap());
+        assert_eq!(item_record_with_note("foo"), iter.next().unwrap());
         assert!(iter.next().is_none());
     }
 
@@ -190,19 +240,19 @@ mod tests {
         let mut iter = Iter::default().with_rope(
             Rope::from_reader(BufReader::new(Cursor::new(b"[,()] foo\n[,()] bar\n[,()] bazz"))).unwrap(),
         );
-        assert_eq!(record_with_note("foo"), iter.forward(1).get().unwrap());
-        assert_eq!(record_with_note("bazz"), iter.forward(2).get().unwrap());
+        assert_eq!(item_record_with_note("foo"), iter.forward(1).get().unwrap());
+        assert_eq!(item_record_with_note("bazz"), iter.forward(2).get().unwrap());
         assert!(iter.forward(1).get().is_none());
         iter.go_to_start();
         iter.forward(1);
-        assert_eq!(record_with_note("bar"), iter.next().unwrap());
-        assert_eq!(record_with_note("bazz"), iter.forward(1).get().unwrap());
+        assert_eq!(item_record_with_note("bar"), iter.next().unwrap());
+        assert_eq!(item_record_with_note("bazz"), iter.forward(1).get().unwrap());
         iter.go_to_start();
-        assert_eq!(record_with_note("bar"), iter.forward(2).get().unwrap());
-        assert_eq!(record_with_note("bazz"), iter.next().unwrap());
+        assert_eq!(item_record_with_note("bar"), iter.forward(2).get().unwrap());
+        assert_eq!(item_record_with_note("bazz"), iter.next().unwrap());
         iter.go_to_start();
-        assert_eq!(record_with_note("bazz"), iter.forward(3).get().unwrap());
-        assert_eq!(record_with_note("bazz"), iter.forward(0).get().unwrap());
+        assert_eq!(item_record_with_note("bazz"), iter.forward(3).get().unwrap());
+        assert_eq!(item_record_with_note("bazz"), iter.forward(0).get().unwrap());
         assert!(iter.forward(1).get().is_none());
 
         let mut iter = Iter::default().with_rope(
@@ -215,33 +265,33 @@ mod tests {
             Rope::from_reader(BufReader::new(Cursor::new(b"\n"))).unwrap(),
         );
         assert!(iter.forward(0).get().is_none());
-        assert!(iter.forward(1).get().is_none());
+        assert!(iter.forward(1).get().unwrap().into_record().is_none());
 
         let mut iter = Iter::default().with_rope(
             Rope::from_reader(BufReader::new(Cursor::new(b"\r\n"))).unwrap(),
         );
         assert!(iter.forward(0).get().is_none());
-        assert!(iter.forward(1).get().is_none());
+        assert!(iter.forward(1).get().unwrap().into_record().is_none());
 
         let mut iter = Iter::default().with_rope(
             Rope::from_reader(BufReader::new(Cursor::new(b"[,()] foo"))).unwrap(),
         );
         assert!(iter.forward(0).get().is_none());
-        assert_eq!(record_with_note("foo"), iter.forward(1).get().unwrap());
+        assert_eq!(item_record_with_note("foo"), iter.forward(1).get().unwrap());
         assert!(iter.forward(1).get().is_none());
 
         let mut iter = Iter::default().with_rope(
             Rope::from_reader(BufReader::new(Cursor::new(b"[,()] foo\n"))).unwrap(),
         );
         assert!(iter.forward(0).get().is_none());
-        assert_eq!(record_with_note("foo"), iter.forward(1).get().unwrap());
+        assert_eq!(item_record_with_note("foo"), iter.forward(1).get().unwrap());
         assert!(iter.forward(1).get().is_none());
 
         let mut iter = Iter::default().with_rope(
             Rope::from_reader(BufReader::new(Cursor::new(b"[,()] foo\r\n"))).unwrap(),
         );
         assert!(iter.forward(0).get().is_none());
-        assert_eq!(record_with_note("foo"), iter.forward(1).get().unwrap());
+        assert_eq!(item_record_with_note("foo"), iter.forward(1).get().unwrap());
         assert!(iter.forward(1).get().is_none());
     }
 
@@ -251,17 +301,17 @@ mod tests {
             Rope::from_reader(BufReader::new(Cursor::new(b"[,()] foo\n[,()] bar\n[,()] bazz"))).unwrap(),
         );
         iter.go_to_end();
-        assert_eq!(record_with_note("bar"), iter.backward(2).get().unwrap());
+        assert_eq!(item_record_with_note("bar"), iter.backward(2).get().unwrap());
         assert!(iter.backward(2).get().is_none());
-        assert_eq!(record_with_note("foo"), iter.next().unwrap());
+        assert_eq!(item_record_with_note("foo"), iter.next().unwrap());
         iter.go_to_end();
-        assert_eq!(record_with_note("bar"), iter.backward(2).get().unwrap());
-        assert_eq!(record_with_note("foo"), iter.backward(1).get().unwrap());
+        assert_eq!(item_record_with_note("bar"), iter.backward(2).get().unwrap());
+        assert_eq!(item_record_with_note("foo"), iter.backward(1).get().unwrap());
         iter.go_to_end();
-        assert_eq!(record_with_note("foo"), iter.backward(3).get().unwrap());
-        assert_eq!(record_with_note("bar"), iter.next().unwrap());
-        assert_eq!(record_with_note("bar"), iter.backward(0).get().unwrap());
-        assert_eq!(record_with_note("foo"), iter.backward(1).get().unwrap());
+        assert_eq!(item_record_with_note("foo"), iter.backward(3).get().unwrap());
+        assert_eq!(item_record_with_note("bar"), iter.next().unwrap());
+        assert_eq!(item_record_with_note("bar"), iter.backward(0).get().unwrap());
+        assert_eq!(item_record_with_note("foo"), iter.backward(1).get().unwrap());
         assert!(iter.backward(1).get().is_none());
 
         let mut iter = Iter::default().with_rope(
@@ -276,21 +326,21 @@ mod tests {
         );
         iter.go_to_end();
         assert!(iter.backward(0).get().is_none());
-        assert!(iter.backward(1).get().is_none());
+        assert!(iter.backward(1).get().unwrap().into_record().is_none());
 
         let mut iter = Iter::default().with_rope(
             Rope::from_reader(BufReader::new(Cursor::new(b"\r\n"))).unwrap(),
         );
         iter.go_to_end();
         assert!(iter.backward(0).get().is_none());
-        assert!(iter.backward(1).get().is_none());
+        assert!(iter.backward(1).get().unwrap().into_record().is_none());
 
         let mut iter = Iter::default().with_rope(
             Rope::from_reader(BufReader::new(Cursor::new(b"[,()] foo"))).unwrap(),
         );
         iter.go_to_end();
         assert!(iter.backward(0).get().is_none());
-        assert_eq!(record_with_note("foo"), iter.backward(1).get().unwrap());
+        assert_eq!(item_record_with_note("foo"), iter.backward(1).get().unwrap());
         assert!(iter.backward(1).get().is_none());
 
         let mut iter = Iter::default().with_rope(
@@ -298,7 +348,7 @@ mod tests {
         );
         iter.go_to_end();
         assert!(iter.backward(0).get().is_none());
-        assert_eq!(record_with_note("foo"), iter.backward(1).get().unwrap());
+        assert_eq!(item_record_with_note("foo"), iter.backward(1).get().unwrap());
         assert!(iter.backward(1).get().is_none());
 
         let mut iter = Iter::default().with_rope(
@@ -306,25 +356,25 @@ mod tests {
         );
         iter.go_to_end();
         assert!(iter.backward(0).get().is_none());
-        assert_eq!(record_with_note("foo"), iter.backward(1).get().unwrap());
+        assert_eq!(item_record_with_note("foo"), iter.backward(1).get().unwrap());
         assert!(iter.backward(1).get().is_none());
     }
 
     #[test]
     fn iter_walk_combined() {
         let mut iter = Iter::default().with_rope(
-            Rope::from_reader(BufReader::new(Cursor::new(b"[,()] foo\n[,()] bar\n[,()] bazz"))).unwrap(),
+            Rope::from_reader(BufReader::new(Cursor::new(b"[,()] foo\nbar\n[,()] bazz"))).unwrap(),
         );
-        assert_eq!(record_with_note("foo"), iter.forward(1).get().unwrap());
+        assert_eq!(item_record_with_note("foo"), iter.forward(1).get().unwrap());
         assert!(iter.backward(1).get().is_none());
-        assert_eq!(record_with_note("bar"), iter.forward(2).get().unwrap());
-        assert_eq!(record_with_note("foo"), iter.backward(1).get().unwrap());
+        assert_eq!(item_line("bar"), iter.forward(2).get().unwrap());
+        assert_eq!(item_record_with_note("foo"), iter.backward(1).get().unwrap());
         assert!(iter.backward(1).get().is_none());
-        assert_eq!(record_with_note("bazz"), iter.forward(3).get().unwrap());
-        assert_eq!(record_with_note("foo"), iter.backward(2).get().unwrap());
-        assert_eq!(record_with_note("bar"), iter.forward(1).get().unwrap());
+        assert_eq!(item_record_with_note("bazz"), iter.forward(3).get().unwrap());
+        assert_eq!(item_record_with_note("foo"), iter.backward(2).get().unwrap());
+        assert_eq!(item_line("bar"), iter.forward(1).get().unwrap());
         assert!(iter.forward(2).get().is_none());
-        assert_eq!(record_with_note("bazz"), iter.backward(1).get().unwrap());
+        assert_eq!(item_record_with_note("bazz"), iter.backward(1).get().unwrap());
         assert!(iter.backward(3).get().is_none());
     }
 
@@ -333,23 +383,23 @@ mod tests {
         let mut iter = Iter::default().with_rope(
             Rope::from_reader(BufReader::new(Cursor::new(b"[,()] foo\n[,()] bar\n[,()] bazz"))).unwrap(),
         );
-        assert_eq!(record_with_note("foo"), iter.next().unwrap());
-        assert_eq!(record_with_note("bar"), iter.next().unwrap());
-        iter.update(&record_with_note("test"));
-        assert_eq!(record_with_note("bazz"), iter.next().unwrap());
+        assert_eq!(item_record_with_note("foo"), iter.next().unwrap());
+        assert_eq!(item_record_with_note("bar"), iter.next().unwrap());
+        iter.update(&item_record_with_note("test"));
+        assert_eq!(item_record_with_note("bazz"), iter.next().unwrap());
         assert!(iter.next().is_none());
-        assert_eq!(record_with_note("test"), iter.backward(2).get().unwrap());
+        assert_eq!(item_record_with_note("test"), iter.backward(2).get().unwrap());
 
         iter.go_to_start();
-        assert_eq!(record_with_note("foo"), iter.next().unwrap());
-        iter.update(&record_with_note("note"));
-        assert_eq!(record_with_note("bazz"), iter.forward(2).get().unwrap());
-        iter.update(&record_with_note("some"));
+        assert_eq!(item_record_with_note("foo"), iter.next().unwrap());
+        iter.update(&item_record_with_note("note"));
+        assert_eq!(item_record_with_note("bazz"), iter.forward(2).get().unwrap());
+        iter.update(&item_record_with_note("some"));
 
         iter.go_to_start();
-        assert_eq!(record_with_note("note"), iter.next().unwrap());
-        assert_eq!(record_with_note("test"), iter.next().unwrap());
-        assert_eq!(record_with_note("some"), iter.next().unwrap());
+        assert_eq!(item_record_with_note("note"), iter.next().unwrap());
+        assert_eq!(item_record_with_note("test"), iter.next().unwrap());
+        assert_eq!(item_record_with_note("some"), iter.next().unwrap());
         assert!(iter.next().is_none());
     }
 }
