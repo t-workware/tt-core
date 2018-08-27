@@ -301,6 +301,9 @@ mod tests {
             Rope::from_reader(BufReader::new(Cursor::new(b"[,()] foo\n[,()] bar\n[,()] bazz"))).unwrap(),
         );
         iter.go_to_end();
+        assert!(iter.backward(0).get().is_none());
+        assert_eq!(item_record_with_note("bazz"), iter.backward(1).get().unwrap());
+        iter.go_to_end();
         assert_eq!(item_record_with_note("bar"), iter.backward(2).get().unwrap());
         assert!(iter.backward(2).get().is_none());
         assert_eq!(item_record_with_note("foo"), iter.next().unwrap());
