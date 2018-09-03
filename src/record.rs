@@ -1,7 +1,7 @@
 use std::string::ToString;
 use std::str::FromStr;
 use regex::Regex;
-pub use chrono::{DateTime, Local, Duration, TimeZone, Timelike};
+pub use chrono::{DateTime, Local, Duration, TimeZone, Timelike, Date};
 use error::TimeTrackError;
 
 lazy_static! {
