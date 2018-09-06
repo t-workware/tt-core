@@ -11,4 +11,6 @@ pub trait Journal {
     fn get(&self, query: &[RecordFieldType], offset: Option<i32>) -> JournalResult<Option<Record>>;
     fn update<F>(&mut self, query: &[RecordFieldType], offset: Option<i32>, f: F) -> JournalResult<bool>
         where F: FnOnce(Record) -> Option<Record>;
+    fn remove<F>(&mut self, query: &[RecordFieldType], offset: Option<i32>, f: F) -> JournalResult<bool>
+        where F: FnOnce(Record) -> bool;
 }

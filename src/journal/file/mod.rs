@@ -57,6 +57,19 @@ impl Journal for FileJournal {
         }
         Ok(updated)
     }
+
+    fn remove<F>(&mut self, query: &[RecordFieldType], offset: Option<i32>, f: F) -> JournalResult<bool>
+        where F: FnOnce(Record) -> bool,
+    {
+        let mut iter = self.try_iter()?;
+        let removed = iter_to_record(&mut iter, query, offset)?
+            .map(|record| f(record) && iter.remove().is_some())
+            .unwrap_or(false);
+        if removed {
+            iter.flush()?;
+        }
+        Ok(removed)
+    }
 }
 
 fn iter_to_record(iter: &mut Iter, query: &[RecordFieldType], offset: Option<i32>) -> JournalResult<Option<Record>> {

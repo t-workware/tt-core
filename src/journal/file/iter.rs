@@ -86,13 +86,18 @@ impl Iter {
     }
 
     pub fn update(&mut self, item: &<Self as Iterator>::Item) -> Option<usize> {
+        let start_idx = self.remove()?;
+        self.rope.insert(start_idx, &(item.to_string() + "\n"));
+        Some(start_idx)
+    }
+
+    pub fn remove(&mut self) -> Option<usize> {
         let cur_line_idx = self.cur_line_idx?;
         let start_idx = self.rope.line_to_char(cur_line_idx);
         if cur_line_idx + 1 <= self.rope.len_lines() {
             let end_idx = self.rope.line_to_char(cur_line_idx + 1);
             self.rope.remove(start_idx..end_idx);
         }
-        self.rope.insert(start_idx, &(item.to_string() + "\n"));
         Some(start_idx)
     }
 
@@ -403,6 +408,32 @@ mod tests {
         assert_eq!(item_record_with_note("note"), iter.next().unwrap());
         assert_eq!(item_record_with_note("test"), iter.next().unwrap());
         assert_eq!(item_record_with_note("some"), iter.next().unwrap());
+        assert!(iter.next().is_none());
+    }
+
+    #[test]
+    fn iter_remove() {
+        let mut iter = Iter::default().with_rope(
+            Rope::from_reader(BufReader::new(Cursor::new(b"[,()] foo\n[,()] bar\n[,()] bazz"))).unwrap(),
+        );
+        assert_eq!(item_record_with_note("foo"), iter.next().unwrap());
+        assert_eq!(item_record_with_note("bar"), iter.next().unwrap());
+        iter.remove();
+        assert!(iter.next().is_none());
+        assert_eq!(item_record_with_note("bazz"), iter.backward(1).get().unwrap());
+        assert_eq!(item_record_with_note("foo"), iter.backward(1).get().unwrap());
+        assert!(iter.backward(1).get().is_none());
+
+        iter.go_to_start();
+        assert_eq!(item_record_with_note("foo"), iter.next().unwrap());
+        iter.remove();
+        assert!(iter.next().is_none());
+
+        iter.go_to_start();
+        assert_eq!(item_record_with_note("bazz"), iter.next().unwrap());
+        iter.remove();
+
+        iter.go_to_start();
         assert!(iter.next().is_none());
     }
 }
