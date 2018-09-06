@@ -42,13 +42,13 @@ fn add_record() {
 
     let duration = Duration::seconds(2533);
     let correction = Duration::seconds(2600) - duration;
-    record.duration = Some(duration);
-    record.correction = Some(correction);
+    record.activity = Some(duration);
+    record.rest = Some(correction);
     journal.add(&record).expect("Can't add record to journal");
     let expected = format!("[{}, 42 (1)] Some note\n", formatted_now);
     assert_content!(journal_file, expected);
 
-    record.correction = Some(-correction);
+    record.rest = Some(-correction);
     journal.add(&record).expect("Can't add record to journal");
     let expected = format!("[{}, 42 (1)] Some note\n[{}, 42 (-1)] Some note\n",
                            formatted_now, formatted_now);
@@ -70,26 +70,26 @@ fn get_record() {
     let expected_records = [
         Some(Record {
             start: Local.datetime_from_str("2018-08-16 13:52:43", Record::START_DATETIME_FORMAT).ok(),
-            duration: Some(Duration::minutes(42)),
-            correction: Some(Duration::minutes(1)),
+            activity: Some(Duration::minutes(42)),
+            rest: Some(Duration::minutes(1)),
             note: "Note 1".to_string(),
         }),
         Some(Record {
             start: Local.datetime_from_str("2018-08-16 15:40:25", Record::START_DATETIME_FORMAT).ok(),
-            duration: Some(Duration::minutes(42)),
-            correction: Some(Duration::minutes(-5)),
+            activity: Some(Duration::minutes(42)),
+            rest: Some(Duration::minutes(-5)),
             note: "Note 2".to_string(),
         }),
         Some(Record {
             start: Local.datetime_from_str("2018-08-16 18:12:01", Record::START_DATETIME_FORMAT).ok(),
-            duration: Some(Duration::minutes(85)),
-            correction: None,
+            activity: Some(Duration::minutes(85)),
+            rest: None,
             note: "Note 3".to_string(),
         }),
         Some(Record {
             start: Local.datetime_from_str("2018-08-16 18:12:01", Record::START_DATETIME_FORMAT).ok(),
-            duration: Some(Duration::minutes(85)),
-            correction: None,
+            activity: Some(Duration::minutes(85)),
+            rest: None,
             note: "".to_string(),
         })
     ];
@@ -100,11 +100,11 @@ fn get_record() {
             .expect("Can't get record from journal");
         assert_eq!(expected_records[index], record);
 
-        let record = journal.get(&[RecordFieldType::Correction(Some(Duration::minutes(-5)))], Some(i - 1))
+        let record = journal.get(&[RecordFieldType::Rest(Some(Duration::minutes(-5)))], Some(i - 1))
             .expect("Can't get record from journal");
         assert_eq!(expected_records[index], record);
 
-        let record = journal.get(&[RecordFieldType::Correction(None)], Some(i - 2))
+        let record = journal.get(&[RecordFieldType::Rest(None)], Some(i - 2))
             .expect("Can't get record from journal");
         assert_eq!(expected_records[index], record);
 
@@ -121,16 +121,16 @@ fn get_record() {
         .expect("Can't get record from journal");
     assert_eq!(expected_records[0], record);
 
-    let record = journal.get(&[RecordFieldType::Duration(Some(Duration::minutes(42)))], Some(0))
+    let record = journal.get(&[RecordFieldType::Activity(Some(Duration::minutes(42)))], Some(0))
         .expect("Can't get record from journal");
     assert_eq!(expected_records[0], record);
 
-    let record = journal.get(&[RecordFieldType::Duration(Some(Duration::minutes(85)))], None)
+    let record = journal.get(&[RecordFieldType::Activity(Some(Duration::minutes(85)))], None)
         .expect("Can't get record from journal");
     assert_eq!(expected_records[2], record);
 
     let record = journal.get(&[
-        RecordFieldType::Duration(Some(Duration::minutes(85))),
+        RecordFieldType::Activity(Some(Duration::minutes(85))),
         RecordFieldType::Note("".to_string())
     ], None).expect("Can't get record from journal");
     assert_eq!(expected_records[3], record);
@@ -154,17 +154,17 @@ fn update_record() {
         record.note = "Note 4".to_string();
         Some(record)
     }).unwrap());
-    assert!(journal.update(&[RecordFieldType::Correction(Some(Duration::minutes(1)))], None, |mut record| {
+    assert!(journal.update(&[RecordFieldType::Rest(Some(Duration::minutes(1)))], None, |mut record| {
         record.start = Local.datetime_from_str("2018-08-20 22:40:12", Record::START_DATETIME_FORMAT).ok();
-        record.duration = Some(Duration::minutes(12));
+        record.activity = Some(Duration::minutes(12));
         Some(record)
     }).unwrap());
-    assert!(journal.update(&[RecordFieldType::Correction(None)], None, |mut record| {
-        record.correction = Some(Duration::minutes(-17));
+    assert!(journal.update(&[RecordFieldType::Rest(None)], None, |mut record| {
+        record.rest = Some(Duration::minutes(-17));
         Some(record)
     }).unwrap());
-    assert!(journal.update(&[RecordFieldType::Correction(Some(Duration::minutes(-17)))], Some(-1), |mut record| {
-        record.correction = None;
+    assert!(journal.update(&[RecordFieldType::Rest(Some(Duration::minutes(-17)))], Some(-1), |mut record| {
+        record.rest = None;
         record.note = "".to_string();
         Some(record)
     }).unwrap());

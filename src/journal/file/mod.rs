@@ -80,8 +80,8 @@ fn iter_to_record(iter: &mut Iter, query: &[RecordFieldType], offset: Option<i32
             for field in query {
                 if !match field {
                     RecordFieldType::Start(x) => *x == record.start,
-                    RecordFieldType::Duration(x) => *x == record.duration,
-                    RecordFieldType::Correction(x) => *x == record.correction,
+                    RecordFieldType::Activity(x) => *x == record.activity,
+                    RecordFieldType::Rest(x) => *x == record.rest,
                     RecordFieldType::Note(x) => *x == record.note,
                 } {
                     first_record = false;

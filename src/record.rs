@@ -9,8 +9,8 @@ lazy_static! {
         let regex_string = format!(
             r"^\[\s*(?P<{}>[^,]*),\s*(?P<{}>[0-9]*)\s*\(\s*(?P<{}>\-?[0-9]*)\s*\)\s*\]\s*(?P<{}>[^\n|^\r\n]*)\r?\n*$",
             RecordFieldName::Start.name(),
-            RecordFieldName::Duration.name(),
-            RecordFieldName::Correction.name(),
+            RecordFieldName::Activity.name(),
+            RecordFieldName::Rest.name(),
             RecordFieldName::Note.name()
         );
         Regex::new(&regex_string).unwrap()
@@ -20,8 +20,8 @@ lazy_static! {
 #[derive(Debug, Default, PartialEq, PartialOrd, FieldType, FieldName)]
 pub struct Record {
     pub start: Option<DateTime<Local>>,
-    pub duration: Option<Duration>,
-    pub correction: Option<Duration>,
+    pub activity: Option<Duration>,
+    pub rest: Option<Duration>,
     pub note: String,
 }
 
@@ -36,19 +36,19 @@ impl Record {
         }
     }
 
-    pub fn set_duration_to_now(&mut self) {
+    pub fn set_activity_to_now(&mut self) {
         if self.start.is_some() {
             let now = Local::now();
-            let total_duration = Duration::minutes((now - *self.start.as_ref().unwrap()).num_minutes());
-            self.duration = Some(total_duration - self.correction.unwrap_or(Duration::minutes(0)));
+            let total_activity = Duration::minutes((now - *self.start.as_ref().unwrap()).num_minutes());
+            self.activity = Some(total_activity - self.rest.unwrap_or(Duration::minutes(0)));
         }
     }
 
-    pub fn set_correction_to_now(&mut self) {
+    pub fn set_rest_to_now(&mut self) {
         if self.start.is_some() {
             let now = Local::now();
-            let total_duration = Duration::minutes((now - *self.start.as_ref().unwrap()).num_minutes());
-            self.correction = Some(total_duration - self.duration.unwrap_or(Duration::minutes(0)));
+            let total_activity = Duration::minutes((now - *self.start.as_ref().unwrap()).num_minutes());
+            self.rest = Some(total_activity - self.activity.unwrap_or(Duration::minutes(0)));
         }
     }
 }
@@ -58,8 +58,8 @@ impl ToString for Record {
         let line = format!(
             "[{}, {} ({})]",
             to_string_opt_as_str!(self.start.map(|dt| dt.format(Record::START_DATETIME_FORMAT))),
-            to_string_opt_as_str!(self.duration.map(|d| d.num_minutes())),
-            to_string_opt_as_str!(self.correction.map(|d| d.num_minutes()))
+            to_string_opt_as_str!(self.activity.map(|d| d.num_minutes())),
+            to_string_opt_as_str!(self.rest.map(|d| d.num_minutes()))
         );
         if !self.note.is_empty() {
             format!("{} {}", line, self.note)
@@ -77,9 +77,9 @@ impl FromStr for Record {
             Ok(Record {
                 start: Local.datetime_from_str(&caps[RecordFieldName::Start.name()],
                                                Record::START_DATETIME_FORMAT).ok(),
-                duration: caps[RecordFieldName::Duration.name()].parse::<i64>()
+                activity: caps[RecordFieldName::Activity.name()].parse::<i64>()
                     .map(|min| Duration::minutes(min)).ok(),
-                correction: caps[RecordFieldName::Correction.name()].parse::<i64>()
+                rest: caps[RecordFieldName::Rest.name()].parse::<i64>()
                     .map(|min| Duration::minutes(min)).ok(),
                 note: caps[RecordFieldName::Note.name()].to_string(),
             })
@@ -109,32 +109,32 @@ mod tests {
 
         let caps = RECORD_REGEX.captures("[,()]").unwrap();
         assert!(caps["start"].is_empty());
-        assert!(caps["duration"].is_empty());
-        assert!(caps["correction"].is_empty());
+        assert!(caps["activity"].is_empty());
+        assert!(caps["rest"].is_empty());
         assert!(caps["note"].is_empty());
 
         let caps = RECORD_REGEX.captures("[,  ()] \n").unwrap();
         assert!(caps["start"].is_empty());
-        assert!(caps["duration"].is_empty());
-        assert!(caps["correction"].is_empty());
+        assert!(caps["activity"].is_empty());
+        assert!(caps["rest"].is_empty());
         assert!(caps["note"].is_empty());
 
         let caps = RECORD_REGEX.captures("[2018-07-26 23:03:41,  ()] Some note").unwrap();
         assert_eq!(&caps["start"], "2018-07-26 23:03:41");
-        assert!(caps["duration"].is_empty());
-        assert!(caps["correction"].is_empty());
+        assert!(caps["activity"].is_empty());
+        assert!(caps["rest"].is_empty());
         assert_eq!(&caps["note"], "Some note");
 
         let caps = RECORD_REGEX.captures("[2018-07-26 23:03:41, 25 (6)] Some note").unwrap();
         assert_eq!(&caps["start"], "2018-07-26 23:03:41");
-        assert_eq!(&caps["duration"], "25");
-        assert_eq!(&caps["correction"], "6");
+        assert_eq!(&caps["activity"], "25");
+        assert_eq!(&caps["rest"], "6");
         assert_eq!(&caps["note"], "Some note");
 
         let caps = RECORD_REGEX.captures("[  2018-07-26 23:03:41,  25  ( -16 ) ]  Some note\n").unwrap();
         assert_eq!(&caps["start"], "2018-07-26 23:03:41");
-        assert_eq!(&caps["duration"], "25");
-        assert_eq!(&caps["correction"], "-16");
+        assert_eq!(&caps["activity"], "25");
+        assert_eq!(&caps["rest"], "-16");
         assert_eq!(&caps["note"], "Some note");
 
         assert!(!RECORD_REGEX.is_match("[]"));
@@ -152,8 +152,8 @@ mod tests {
         let now = now - Duration::nanoseconds(now.nanosecond() as i64);
         let record = Record {
             start: Some(now.clone()),
-            duration: Some(Duration::minutes(33)),
-            correction: Some(Duration::minutes(-5)),
+            activity: Some(Duration::minutes(33)),
+            rest: Some(Duration::minutes(-5)),
             note: "Some note".to_string(),
         };
 
@@ -162,32 +162,32 @@ mod tests {
     }
 
     #[test]
-    fn set_duration_to_now() {
+    fn set_activity_to_now() {
         let mut record = Record {
             start: Some(Local::now() - Duration::minutes(12)),
             ..Default::default()
         };
-        record.set_duration_to_now();
-        assert_eq!(record.duration.unwrap(), Duration::minutes(12));
+        record.set_activity_to_now();
+        assert_eq!(record.activity.unwrap(), Duration::minutes(12));
 
         let mut record = Record {
             start: Some(Local::now() - Duration::minutes(42)),
-            duration: Some(Duration::minutes(10)),
-            correction: Some(Duration::minutes(12)),
+            activity: Some(Duration::minutes(10)),
+            rest: Some(Duration::minutes(12)),
             ..Default::default()
         };
-        record.set_duration_to_now();
-        assert_eq!(record.duration.unwrap(), Duration::minutes(30));
+        record.set_activity_to_now();
+        assert_eq!(record.activity.unwrap(), Duration::minutes(30));
     }
 
     #[test]
-    fn set_correction_to_now() {
+    fn set_rest_to_now() {
         let mut record = Record {
             start: Some(Local::now() - Duration::minutes(42)),
-            duration: Some(Duration::minutes(30)),
+            activity: Some(Duration::minutes(30)),
             ..Default::default()
         };
-        record.set_correction_to_now();
-        assert_eq!(record.correction.unwrap(), Duration::minutes(12));
+        record.set_rest_to_now();
+        assert_eq!(record.rest.unwrap(), Duration::minutes(12));
     }
 }
