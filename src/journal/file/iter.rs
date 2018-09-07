@@ -5,7 +5,7 @@ use std::str::FromStr;
 
 use ropey::Rope;
 
-use record::Record;
+use record::{Record, RecordFieldType};
 use journal::JournalResult;
 
 #[derive(Default)]
@@ -83,6 +83,45 @@ impl Iter {
     pub fn go_to_end(&mut self) {
         let count = self.lines_count();
         self.cur_line_idx = if count > 0 {Some(count)} else {None};
+    }
+
+    pub fn go_to_record(&mut self, query: &[RecordFieldType], offset: Option<i32>) -> Option<Record> {
+        let offset = offset.unwrap_or(0);
+        let mut first_record = true;
+
+        'next_record: while let Some(item) = self.next() {
+            if let Item::Record(record) = item {
+                for field in query {
+                    if !match field {
+                        RecordFieldType::Start(x) => *x == record.start,
+                        RecordFieldType::Activity(x) => *x == record.activity,
+                        RecordFieldType::Rest(x) => *x == record.rest,
+                        RecordFieldType::Note(x) => *x == record.note,
+                    } {
+                        first_record = false;
+                        continue 'next_record;
+                    }
+                }
+
+                return if offset == 0 {
+                    Some(record)
+                } else if offset > 0 {
+                    self
+                        .forward(offset as usize)
+                        .get()
+                        .and_then(|item| item.into_record())
+                } else {
+                    if first_record {
+                        self.go_to_end();
+                    }
+                    self
+                        .backward(-offset as usize)
+                        .get()
+                        .and_then(|item| item.into_record())
+                };
+            }
+        }
+        None
     }
 
     pub fn update(&mut self, item: &<Self as Iterator>::Item) -> Option<usize> {
