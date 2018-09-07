@@ -36,19 +36,23 @@ impl Record {
         }
     }
 
-    pub fn set_activity_to_now(&mut self) {
+    pub fn duration_until_now(&self) -> Duration {
+        Duration::minutes(
+            self.start
+                .map(|start| (Local::now() - start).num_minutes())
+                .unwrap_or(0)
+        )
+    }
+
+    pub fn update_activity_to_now(&mut self) {
         if self.start.is_some() {
-            let now = Local::now();
-            let total_activity = Duration::minutes((now - *self.start.as_ref().unwrap()).num_minutes());
-            self.activity = Some(total_activity - self.rest.unwrap_or(Duration::minutes(0)));
+            self.activity = Some(self.duration_until_now() - self.rest.unwrap_or(Duration::minutes(0)));
         }
     }
 
-    pub fn set_rest_to_now(&mut self) {
+    pub fn update_rest_to_now(&mut self) {
         if self.start.is_some() {
-            let now = Local::now();
-            let total_activity = Duration::minutes((now - *self.start.as_ref().unwrap()).num_minutes());
-            self.rest = Some(total_activity - self.activity.unwrap_or(Duration::minutes(0)));
+            self.rest = Some(self.duration_until_now() - self.activity.unwrap_or(Duration::minutes(0)));
         }
     }
 }
@@ -167,7 +171,7 @@ mod tests {
             start: Some(Local::now() - Duration::minutes(12)),
             ..Default::default()
         };
-        record.set_activity_to_now();
+        record.update_activity_to_now();
         assert_eq!(record.activity.unwrap(), Duration::minutes(12));
 
         let mut record = Record {
@@ -176,7 +180,7 @@ mod tests {
             rest: Some(Duration::minutes(12)),
             ..Default::default()
         };
-        record.set_activity_to_now();
+        record.update_activity_to_now();
         assert_eq!(record.activity.unwrap(), Duration::minutes(30));
     }
 
@@ -187,7 +191,7 @@ mod tests {
             activity: Some(Duration::minutes(30)),
             ..Default::default()
         };
-        record.set_rest_to_now();
+        record.update_rest_to_now();
         assert_eq!(record.rest.unwrap(), Duration::minutes(12));
     }
 }
