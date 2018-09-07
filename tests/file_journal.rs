@@ -18,7 +18,7 @@ use tt_core::{
 
 #[test]
 fn add_record() {
-    let journal_dir = &["..", "target", "test_file_journal", "add"].iter().collect::<PathBuf>();
+    let journal_dir = &["target", "test_file_journal", "add"].iter().collect::<PathBuf>();
     let journal_file = &journal_dir.join("journal.txt");
     clear_dir!(journal_dir);
     let mut journal = FileJournal::new(journal_file);
@@ -57,7 +57,7 @@ fn add_record() {
 
 #[test]
 fn get_record() {
-    let journal_dir = &["..", "target", "test_file_journal", "get"].iter().collect::<PathBuf>();
+    let journal_dir = &["target", "test_file_journal", "get"].iter().collect::<PathBuf>();
     let journal_file = &journal_dir.join("journal.txt");
     clear_dir!(journal_dir);
     let journal = FileJournal::new(journal_file);
@@ -138,7 +138,7 @@ fn get_record() {
 
 #[test]
 fn update_record() {
-    let journal_dir = &["..", "target", "test_file_journal", "update"].iter().collect::<PathBuf>();
+    let journal_dir = &["target", "test_file_journal", "update"].iter().collect::<PathBuf>();
     let journal_file = &journal_dir.join("journal.txt");
     clear_dir!(journal_dir);
     let mut journal = FileJournal::new(journal_file);
