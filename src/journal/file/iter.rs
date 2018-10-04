@@ -2,7 +2,7 @@ use std::fs;
 use std::ffi::OsString;
 use std::io::BufWriter;
 use std::str::FromStr;
-
+use std::borrow::Cow;
 use ropey::Rope;
 
 use record::{Record, RecordFieldType};
@@ -41,13 +41,14 @@ impl Iter {
     pub fn get(&self) -> Option<<Self as Iterator>::Item> {
         if let Some(cur_line_idx) = self.cur_line_idx {
             if cur_line_idx < self.lines_count() {
-                return self.rope
-                    .line(cur_line_idx)
-                    .as_str()
-                    .map(|s| Record::from_str(s)
+                let line = &Cow::from(
+                    self.rope.line(cur_line_idx)
+                );
+                return Some(
+                    Record::from_str(line)
                         .map(|r| Item::Record(r))
-                        .unwrap_or(Item::SomeLine(s.trim_right_matches('\n').to_string()))
-                    );
+                        .unwrap_or(Item::SomeLine(line.trim_right_matches('\n').to_string()))
+                );
             }
         }
         None
@@ -340,6 +341,22 @@ mod tests {
     }
 
     #[test]
+    fn iter_walk_forward_large() {
+        let mut text = String::new();
+        for i in 0..100 {
+            text += &format!("[,()] foo {}\n", i);
+        }
+        let mut iter = Iter::default().with_rope(
+            Rope::from_reader(BufReader::new(Cursor::new(text.as_bytes()))).unwrap(),
+        );
+        for i in 0..100 {
+            let item = iter.forward(1).get().expect(&format!("iteration: {}", i));
+            assert_eq!(item_record_with_note(&format!("foo {}", i)), item, "iteration: {}", i);
+        }
+        assert!(iter.forward(1).get().is_none());
+    }
+
+    #[test]
     fn iter_walk_backward() {
         let mut iter = Iter::default().with_rope(
             Rope::from_reader(BufReader::new(Cursor::new(b"[,()] foo\n[,()] bar\n[,()] bazz"))).unwrap(),
@@ -404,6 +421,23 @@ mod tests {
         iter.go_to_end();
         assert!(iter.backward(0).get().is_none());
         assert_eq!(item_record_with_note("foo"), iter.backward(1).get().unwrap());
+        assert!(iter.backward(1).get().is_none());
+    }
+
+    #[test]
+    fn iter_walk_backward_large() {
+        let mut text = String::new();
+        for i in 0..100 {
+            text += &format!("[,()] foo {}\n", i);
+        }
+        let mut iter = Iter::default().with_rope(
+            Rope::from_reader(BufReader::new(Cursor::new(text.as_bytes()))).unwrap(),
+        );
+        iter.go_to_end();
+        for i in (0..100).rev() {
+            let item = iter.backward(1).get().expect(&format!("iteration: {}", i));
+            assert_eq!(item_record_with_note(&format!("foo {}", i)), item, "iteration: {}", i);
+        }
         assert!(iter.backward(1).get().is_none());
     }
 
