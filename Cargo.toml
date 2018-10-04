@@ -8,7 +8,7 @@ chrono = "0.4"
 failure = "0.1"
 regex = "1.0"
 lazy_static = "1.0"
-ropey = "0.8"
+ropey = "0.9"
 field_enums = { git = "https://github.com/XX/field_enums.git" }
 
 [dev-dependencies]
