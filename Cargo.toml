@@ -1,6 +1,6 @@
 [package]
 name = "tt-core"
-version = "0.5.1"
+version = "0.5.2"
 authors = ["XX <freecoder.xx@gmail.com>"]
 
 [dependencies]
@@ -9,7 +9,7 @@ failure = "0.1"
 regex = "1.0"
 lazy_static = "1.0"
 ropey = "0.9"
-field_enums = { git = "https://github.com/XX/field_enums.git" }
+field_types = { git = "https://github.com/XX/field_types.git" }
 
 [dev-dependencies]
 file_assertions = { git = "https://github.com/XX/file_assertions.git" }

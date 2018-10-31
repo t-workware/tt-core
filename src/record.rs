@@ -3,6 +3,8 @@ use std::str::FromStr;
 use regex::Regex;
 pub use chrono::{DateTime, Local, Duration, TimeZone, Timelike, Date, Datelike};
 use error::TimeTrackError;
+use lazy_static::lazy_static;
+use field_types::{FieldType, FieldName};
 
 lazy_static! {
     pub static ref RECORD_REGEX: Regex = {

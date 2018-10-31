@@ -1,9 +1,6 @@
-#[macro_use]
 extern crate failure;
-#[macro_use]
-extern crate field_enums;
+extern crate field_types;
 extern crate regex;
-#[macro_use]
 extern crate lazy_static;
 pub extern crate ropey;
 pub extern crate chrono;
