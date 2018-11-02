@@ -9,7 +9,7 @@ failure = "0.1"
 regex = "1.0"
 lazy_static = "1.0"
 ropey = "0.9"
-field_types = "1.0"
+field_types = "1.1"
 
 [dev-dependencies]
 file_assertions = { git = "https://github.com/XX/file_assertions.git" }
