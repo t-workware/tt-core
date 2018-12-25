@@ -9,7 +9,7 @@ use field_types::{FieldType, FieldName};
 lazy_static! {
     pub static ref RECORD_REGEX: Regex = {
         let regex_string = format!(
-            r"^\[\s*(?P<{}>[^,]*),\s*(?P<{}>[0-9]*)\s*\(\s*(?P<{}>\-?[0-9]*)\s*\)\s*\]\s*(?P<{}>[^\n|^\r\n]*)\r?\n*$",
+            r"^\[\s*(?P<{}>[^,]*),\s*(?P<{}>[0-9]*)\s*(?:\(\s*(?P<{}>\-?[0-9]*)\s*\))?\s*\]\s*(?P<{}>[^\n|^\r\n]*)\r?\n*$",
             RecordFieldName::Start.name(),
             RecordFieldName::Activity.name(),
             RecordFieldName::Rest.name(),
@@ -61,11 +61,22 @@ impl Record {
 
 impl ToString for Record {
     fn to_string(&self) -> String {
+        let rest = if let Some(rest) = self.rest {
+            format!(" ({})", rest.num_minutes())
+        } else {
+            String::new()
+        };
+
+        let timing = if let Some(activity) = self.activity {
+            format!("{}{}", activity.num_minutes(), rest)
+        } else {
+            rest
+        };
+
         let line = format!(
-            "[{}, {} ({})]",
+            "[{}, {}]",
             to_string_opt_as_str!(self.start.map(|dt| dt.format(Record::START_DATETIME_FORMAT))),
-            to_string_opt_as_str!(self.activity.map(|d| d.num_minutes())),
-            to_string_opt_as_str!(self.rest.map(|d| d.num_minutes()))
+            timing
         );
         if !self.note.is_empty() {
             format!("{} {}", line, self.note)
@@ -85,8 +96,9 @@ impl FromStr for Record {
                                                Record::START_DATETIME_FORMAT).ok(),
                 activity: caps[RecordFieldName::Activity.name()].parse::<i64>()
                     .map(|min| Duration::minutes(min)).ok(),
-                rest: caps[RecordFieldName::Rest.name()].parse::<i64>()
-                    .map(|min| Duration::minutes(min)).ok(),
+                rest: caps.name(RecordFieldName::Rest.name())
+                    .and_then(|rest| rest.as_str().parse::<i64>().ok())
+                    .map(|min| Duration::minutes(min)),
                 note: caps[RecordFieldName::Note.name()].to_string(),
             })
         } else {
@@ -107,11 +119,23 @@ mod tests {
 
     #[test]
     fn record_regex() {
+        assert!(RECORD_REGEX.is_match("[,]"));
+        assert!(RECORD_REGEX.is_match("[, ]"));
         assert!(RECORD_REGEX.is_match("[,()]"));
         assert!(RECORD_REGEX.is_match("[, ()]"));
         assert!(RECORD_REGEX.is_match("[,  ()] \n"));
+        assert!(RECORD_REGEX.is_match("[, ()  ]"));
+        assert!(RECORD_REGEX.is_match("[2018-07-26 23:03:41, ] Some note"));
+        assert!(RECORD_REGEX.is_match("[2018-07-26 23:03:41, 25] Some note"));
+        assert!(RECORD_REGEX.is_match("[2018-07-26 23:03:41, 25 ] Some note"));
         assert!(RECORD_REGEX.is_match("[2018-07-26 23:03:41, 25 (7)] Some note"));
         assert!(RECORD_REGEX.is_match("[2018-07-26 23:03:41, 25 (-16)] Some note"));
+
+        let caps = RECORD_REGEX.captures("[,]").unwrap();
+        assert!(caps["start"].is_empty());
+        assert!(caps["activity"].is_empty());
+        assert!(caps.name("rest").is_none());
+        assert!(caps["note"].is_empty());
 
         let caps = RECORD_REGEX.captures("[,()]").unwrap();
         assert!(caps["start"].is_empty());
@@ -125,10 +149,22 @@ mod tests {
         assert!(caps["rest"].is_empty());
         assert!(caps["note"].is_empty());
 
+        let caps = RECORD_REGEX.captures("[2018-07-26 23:03:41, ] Some note").unwrap();
+        assert_eq!(&caps["start"], "2018-07-26 23:03:41");
+        assert!(caps["activity"].is_empty());
+        assert!(caps.name("rest").is_none());
+        assert_eq!(&caps["note"], "Some note");
+
         let caps = RECORD_REGEX.captures("[2018-07-26 23:03:41,  ()] Some note").unwrap();
         assert_eq!(&caps["start"], "2018-07-26 23:03:41");
         assert!(caps["activity"].is_empty());
         assert!(caps["rest"].is_empty());
+        assert_eq!(&caps["note"], "Some note");
+
+        let caps = RECORD_REGEX.captures("[2018-07-26 23:03:41, 25] Some note").unwrap();
+        assert_eq!(&caps["start"], "2018-07-26 23:03:41");
+        assert_eq!(&caps["activity"], "25");
+        assert!(caps.name("rest").is_none());
         assert_eq!(&caps["note"], "Some note");
 
         let caps = RECORD_REGEX.captures("[2018-07-26 23:03:41, 25 (6)] Some note").unwrap();

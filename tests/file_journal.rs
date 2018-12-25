@@ -25,17 +25,17 @@ fn add_record() {
     let mut record = Record::default();
 
     journal.add(&record).expect("Can't add record to journal");
-    assert_content!(journal_file, "[,  ()]\n");
+    assert_content!(journal_file, "[, ]\n");
 
     record.note = "Some note".to_string();
     journal.add(&record).expect("Can't add record to journal");
-    assert_content!(journal_file, "[,  ()]\n[,  ()] Some note\n");
+    assert_content!(journal_file, "[, ]\n[, ] Some note\n");
 
     let now = Local::now();
     let formatted_now = now.format(Record::START_DATETIME_FORMAT);
     record.start = Some(now.clone());
     journal.add(&record).expect("Can't add record to journal");
-    let expected = format!("[,  ()]\n[,  ()] Some note\n[{},  ()] Some note\n", formatted_now);
+    let expected = format!("[, ]\n[, ] Some note\n[{}, ] Some note\n", formatted_now);
     assert_content!(journal_file, expected);
 
     delete_file!(journal_file);
@@ -64,7 +64,7 @@ fn get_record() {
 
     create_file!(journal_file, r"[2018-08-16 13:52:43, 42 (1)] Note 1
 [2018-08-16 15:40:25, 42 (-5)] Note 2
-[2018-08-16 18:12:01, 85 ()] Note 3
+[2018-08-16 18:12:01, 85] Note 3
 [2018-08-16 18:12:01, 85 ()]
 ");
     let expected_records = [
@@ -146,7 +146,7 @@ fn update_record() {
     create_file!(journal_file, r"[2018-08-16 13:52:43, 42 (1)] Note 1
 [2018-08-16 15:40:25, 42 (-5)] Note 2
 [2018-08-16 18:12:01, 85 ()] Note 3
-[2018-08-16 18:12:01, 85 ()]
+[2018-08-16 18:12:01, 85]
 ");
 
     assert!(journal.update(&[], Some(-1), |mut record| {
@@ -169,8 +169,8 @@ fn update_record() {
         Some(record)
     }).unwrap());
     assert_content!(journal_file, r"[2018-08-20 22:40:12, 12 (1)] Note 1
-[2018-08-16 15:40:25, 42 ()]
+[2018-08-16 15:40:25, 42]
 [2018-08-16 18:12:01, 85 (-17)] Note 3
-[2018-08-20 22:30:15, 85 ()] Note 4
+[2018-08-20 22:30:15, 85] Note 4
 ");
 }
