@@ -1,6 +1,6 @@
 [package]
 name = "tt-core"
-version = "0.5.2"
+version = "0.6.0"
 authors = ["XX <freecoder.xx@gmail.com>"]
 
 [dependencies]
