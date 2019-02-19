@@ -76,11 +76,11 @@ impl ToString for Record {
         let line = format!(
             "[{}, {}]",
             self.start
-                .map(|dt| dt.format(Record::START_DATETIME_FORMAT))
+                .map(|dt|
+                    dt.format(Record::START_DATETIME_FORMAT).to_string()
+                )
                 .as_ref()
-                .map(ToString::to_string)
-                .as_ref()
-                .map(|s| s.as_str())
+                .map(String::as_str)
                 .unwrap_or(""),
             timing
         );
