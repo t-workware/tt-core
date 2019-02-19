@@ -4,9 +4,8 @@ use std::io::BufWriter;
 use std::str::FromStr;
 use std::borrow::Cow;
 use ropey::Rope;
-
-use record::{Record, RecordFieldType};
-use journal::JournalResult;
+use crate::record::{Record, RecordFieldType};
+use crate::journal::JournalResult;
 
 #[derive(Default)]
 pub struct Iter {

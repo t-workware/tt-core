@@ -1,13 +1,11 @@
+mod iter;
+
 use std::fs::OpenOptions;
 use std::ffi::{OsString, OsStr};
 use std::io::{Write, BufReader};
-
 use ropey::Rope;
-
-use record::{Record, RecordFieldType};
-use journal::{Journal, JournalResult};
-
-mod iter;
+use crate::record::{Record, RecordFieldType};
+use crate::journal::{Journal, JournalResult};
 pub use self::iter::*;
 
 pub struct FileJournal {

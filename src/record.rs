@@ -2,9 +2,9 @@ use std::string::ToString;
 use std::str::FromStr;
 use regex::Regex;
 pub use chrono::{DateTime, Local, Duration, TimeZone, Timelike, Date, Datelike};
-use error::TimeTrackError;
 use lazy_static::lazy_static;
 use field_types::{FieldType, FieldName};
+use crate::error::TimeTrackError;
 
 lazy_static! {
     pub static ref RECORD_REGEX: Regex = {
@@ -75,7 +75,13 @@ impl ToString for Record {
 
         let line = format!(
             "[{}, {}]",
-            to_string_opt_as_str!(self.start.map(|dt| dt.format(Record::START_DATETIME_FORMAT))),
+            self.start
+                .map(|dt| dt.format(Record::START_DATETIME_FORMAT))
+                .as_ref()
+                .map(ToString::to_string)
+                .as_ref()
+                .map(|s| s.as_str())
+                .unwrap_or(""),
             timing
         );
         if !self.note.is_empty() {

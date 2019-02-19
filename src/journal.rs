@@ -1,8 +1,7 @@
 pub mod file;
 
 use failure::Error;
-
-use record::{Record, RecordFieldType};
+use crate::record::{Record, RecordFieldType};
 
 pub type JournalResult<T = ()> = Result<T, Error>;
 

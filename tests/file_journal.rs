@@ -1,10 +1,6 @@
-extern crate chrono;
-extern crate tt_core;
-#[macro_use]
-extern crate file_assertions;
-
 use std::path::PathBuf;
 use chrono::{Local, Duration, TimeZone};
+use file_assertions::{clear_dir, create_file, delete_file, assert_content};
 use tt_core::{
     record::{
         Record,

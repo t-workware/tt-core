@@ -2,6 +2,10 @@
 name = "tt-core"
 version = "0.6.0"
 authors = ["XX <freecoder.xx@gmail.com>"]
+edition = "2018"
+
+[lib]
+name = "tt_core"
 
 [dependencies]
 chrono = "0.4"
