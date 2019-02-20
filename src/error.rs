@@ -1,4 +1,4 @@
-use failure::{Fail};
+use failure::Fail;
 
 #[derive(Debug, PartialEq, PartialOrd, Fail)]
 pub enum TimeTrackError {
